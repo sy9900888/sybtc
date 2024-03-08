@@ -1,0 +1,45 @@
+const { execSync } = require('child_process');
+const fs = require('fs');
+
+// 指定本地仓库文件夹的路径
+const localRepoPath = '/path/to/local/repo';
+
+// 指定远程仓库的URL
+const remoteRepoUrl = 'https://github.com/your-username/your-repo.git';
+
+// 获取本地仓库文件夹下的所有子文件夹（每个子文件夹对应一个npm代码包）
+const packages = fs.readdirSync(localRepoPath, { withFileTypes: true })
+  .filter(dirent => dirent.isDirectory())
+  .map(dirent => dirent.name);
+
+// 循环处理每个npm代码包
+packages.forEach(packageName => {
+  const packagePath = `${localRepoPath}/${packageName}`;
+
+  // 初始化本地仓库
+  execSync('git init', { cwd: packagePath });
+
+  // 添加远程仓库地址
+  execSync(`git remote add origin ${remoteRepoUrl}`, { cwd: packagePath });
+
+  // 添加和提交代码
+  execSync('git add .', { cwd: packagePath });
+  execSync('git commit -m "Initial commit"', { cwd: packagePath });
+
+  // 推送到远程仓库
+  execSync('git push -u origin master', { cwd: packagePath });
+
+  // 创建npm包
+  if (fs.existsSync(`${packagePath}/package.json`)) {
+    console.log(`Skipping package ${packageName}: package.json already exists.`);
+  } else {
+    execSync('npm init -y', { cwd: packagePath });
+  }
+
+  // 发布npm包
+  execSync('npm publish', { cwd: packagePath });
+
+  console.log(`Package ${packageName} uploaded successfully.`);
+});
+
+console.log('Batch upload completed.');
